@@ -7,8 +7,9 @@ import {
   SafeAreaView,
   ScrollView,
   Picker,
+  Dimensions,
 } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome5 } from "@expo/vector-icons";
 import sudoku from "sudoku";
 
 const SudokuGame = () => {
@@ -16,13 +17,24 @@ const SudokuGame = () => {
   const [solution, setSolution] = useState([]);
   const [selectedCell, setSelectedCell] = useState(null);
   const [mistakes, setMistakes] = useState(0);
-  const [hintCount, setHintCount] = useState(3); // Increased hints to 3
+  const [hintCount, setHintCount] = useState(8);
   const [history, setHistory] = useState([]);
   const [userEntries, setUserEntries] = useState(new Set());
   const [difficulty, setDifficulty] = useState("easy");
   const [time, setTime] = useState(0);
-  const [isMuted, setIsMuted] = useState(false); // State for mute control
-  const [showSettings, setShowSettings] = useState(false); // Settings toggle
+  const [isMuted, setIsMuted] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(
+    Dimensions.get("window").width
+  );
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      setScreenWidth(Dimensions.get("window").width);
+    };
+
+    Dimensions.addEventListener("change", updateDimensions);
+    return () => Dimensions.removeEventListener("change", updateDimensions);
+  }, []);
 
   useEffect(() => {
     generateNewPuzzle();
@@ -34,17 +46,28 @@ const SudokuGame = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const isLandscape = screenWidth > 500;
+  const BOARD_SIZE = 9;
+
   const generateNewPuzzle = () => {
-    const difficultyLevels = { easy: 40, medium: 50, hard: 60 };
+    const difficultyLevels = {
+      easy: { emptyCells: 30, hints: 8 },
+      medium: { emptyCells: 40, hints: 6 },
+      hard: { emptyCells: 50, hints: 4 },
+      expert: { emptyCells: 60, hints: 2 },
+    };
+
+    const { emptyCells, hints } = difficultyLevels[difficulty.toLowerCase()];
     const newPuzzle = sudoku.makepuzzle();
     const newSolution = sudoku.solvepuzzle(newPuzzle);
     const maskedPuzzle = newPuzzle.map((val, i) =>
-      Math.random() < difficultyLevels[difficulty] / 81 ? null : val
+      Math.random() < emptyCells / 81 ? null : val
     );
+
     setPuzzle(maskedPuzzle);
     setSolution(newSolution);
     setMistakes(0);
-    setHintCount(1);
+    setHintCount(hints); // Set hints based on difficulty
     setHistory([]);
     setUserEntries(new Set());
   };
@@ -108,13 +131,10 @@ const SudokuGame = () => {
           emptyCells[Math.floor(Math.random() * emptyCells.length)];
         const newPuzzle = [...puzzle];
 
-        // Fill the correct value from the solution
         newPuzzle[randomIndex] = solution[randomIndex];
 
         setPuzzle(newPuzzle);
         setHintCount((prev) => prev - 1);
-
-        // Add to userEntries to mark it as a filled cell
         setUserEntries((prevEntries) => new Set(prevEntries).add(randomIndex));
       }
     }
@@ -127,113 +147,230 @@ const SudokuGame = () => {
   };
 
   const toggleMute = () => setIsMuted(!isMuted);
-  const toggleSettings = () => setShowSettings(!showSettings);
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={generateNewPuzzle}>
-            <FontAwesome name="refresh" size={24} color="black" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={toggleSettings}>
-            <FontAwesome name="cog" size={24} color="black" />
-          </TouchableOpacity>
-        </View>
+      <ScrollView
+        contentContainerStyle={
+          isLandscape ? styles.landscapeContainer : styles.portraitContainer
+        }
+      >
+        <View
+          style={{ width: isLandscape ? "45%" : "100%", alignItems: "center" }}
+        >
+          {!isLandscape && (
+            <View style={styles.header}>
+              <TouchableOpacity onPress={generateNewPuzzle}>
+                <FontAwesome5 name="sync" size={24} color="black" />
+              </TouchableOpacity>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  width: "10%",
+                  margin: "0 auto",
+                }}
+              >
+                <TouchableOpacity
+                  onPress={toggleMute}
+                  style={styles.audioSetting}
+                >
+                  <FontAwesome5
+                    name={isMuted ? "volume-mute" : "volume-up"}
+                    size={24}
+                    color={isMuted ? "gray" : "black"}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
-        {showSettings && (
-          <View style={styles.settingsMenu}>
-            <TouchableOpacity onPress={toggleMute} style={styles.settingItem}>
-              <FontAwesome
-                name={isMuted ? "volume-off" : "volume-up"}
-                size={24}
-                color="black"
-              />
-              <Text>{isMuted ? "Unmute" : "Mute"}</Text>
-            </TouchableOpacity>
+          <View style={styles.infoBar}>
+            <Text>Mistakes: {mistakes}</Text>
+            <Picker
+              selectedValue={difficulty}
+              style={styles.picker}
+              onValueChange={(itemValue) => setDifficulty(itemValue)}
+            >
+              <Picker.Item label="Easy" value="Easy" />
+              <Picker.Item label="Medium" value="Medium" />
+              <Picker.Item label="Hard" value="Hard" />
+              <Picker.Item label="Expert" value="Expert" />
+            </Picker>
+            <Text>{"Timer: " + formatTime(time)}</Text>
           </View>
+
+          <View style={[styles.sudokuGrid, { height: isLandscape && "50%" }]}>
+            {/* {puzzle.map((value, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.cell,
+                  selectedCell === index && styles.selectedCell,
+                ]}
+                onPress={() => handleCellPress(index)}
+              >
+                <Text style={styles.cellText}>
+                  {value !== null ? value + 1 : ""}
+                </Text>
+              </TouchableOpacity>
+            ))} */}
+            {puzzle.map((value, index) => {
+              const row = Math.floor(index / BOARD_SIZE);
+              const col = index % BOARD_SIZE;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.cell,
+                    selectedCell === index && styles.selectedCell,
+                    row % 3 === 2 &&
+                      row !== BOARD_SIZE - 1 &&
+                      styles.horizontalLine,
+                    col % 3 === 2 &&
+                      col !== BOARD_SIZE - 1 &&
+                      styles.verticalLine,
+                  ]}
+                  onPress={() => handleCellPress(index)}
+                >
+                  <Text style={styles.cellText}>
+                    {value !== null ? value + 1 : ""}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {isLandscape ? (
+          <View style={styles.sideControls}>
+            <View style={styles.header}>
+              <TouchableOpacity onPress={generateNewPuzzle}>
+                <FontAwesome5 name="sync" size={24} color="black" />
+              </TouchableOpacity>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  width: "10%",
+                  margin: "0 auto",
+                }}
+              >
+                <TouchableOpacity
+                  onPress={toggleMute}
+                  style={styles.audioSetting}
+                >
+                  <FontAwesome5
+                    name={isMuted ? "volume-mute" : "volume-up"}
+                    size={24}
+                    color={isMuted ? "gray" : "black"}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.numberGrid}>
+              {Array.from({ length: 9 }).map((_, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleNumberPress(index + 1)}
+                >
+                  <Text style={[styles.number, { fontSize: 40 }]}>
+                    {index + 1}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.actions}>
+              <ActionButton icon="undo" label="Undo" onPress={handleUndo} />
+              <ActionButton icon="eraser" label="Erase" onPress={handleErase} />
+              {hintCount > 0 ? (
+                <ActionButton
+                  icon="lightbulb"
+                  label="Hint"
+                  onPress={handleHint}
+                  notification={hintCount}
+                />
+              ) : (
+                <ActionButton icon="lightbulb" label="Hint" isDisabled />
+              )}
+            </View>
+          </View>
+        ) : (
+          <>
+            <View style={styles.actions}>
+              <ActionButton icon="undo" label="Undo" onPress={handleUndo} />
+              <ActionButton icon="eraser" label="Erase" onPress={handleErase} />
+              {hintCount > 0 ? (
+                <ActionButton
+                  icon="lightbulb"
+                  label="Hint"
+                  onPress={handleHint}
+                  notification={hintCount}
+                />
+              ) : (
+                <ActionButton icon="lightbulb" label="Hint" isDisabled />
+              )}
+            </View>
+
+            <View style={styles.numberPad}>
+              {Array.from({ length: 9 }).map((_, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleNumberPress(index + 1)}
+                >
+                  <Text style={styles.number}>{index + 1}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
         )}
-
-        <View style={styles.infoBar}>
-          <Text>Mistakes: {mistakes}</Text>
-          <Picker
-            selectedValue={difficulty}
-            style={styles.picker}
-            onValueChange={(itemValue) => setDifficulty(itemValue)}
-          >
-            <Picker.Item label="Easy" value="Easy" />
-            <Picker.Item label="Medium" value="Medium" />
-            <Picker.Item label="Hard" value="Hard" />
-          </Picker>
-          <Text>{"Timer: " + formatTime(time)}</Text>
-        </View>
-
-        <View style={styles.sudokuGrid}>
-          {puzzle.map((value, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.cell,
-                selectedCell === index && styles.selectedCell,
-              ]}
-              onPress={() => handleCellPress(index)}
-            >
-              <Text style={styles.cellText}>
-                {value !== null ? value + 1 : ""}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.actions}>
-          <ActionButton icon="undo" label="Undo" onPress={handleUndo} />
-          <ActionButton icon="eraser" label="Erase" onPress={handleErase} />
-          <ActionButton
-            icon="lightbulb-o"
-            label="Hint"
-            onPress={handleHint}
-            // notification={hintCount}
-          />
-        </View>
-
-        <View style={styles.numberPad}>
-          {Array.from({ length: 9 }).map((_, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => handleNumberPress(index + 1)}
-            >
-              <Text style={styles.number}>{index + 1}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const ActionButton = ({ icon, label, onPress, notification }) => (
-  <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-    <FontAwesome name={icon} size={24} color="black" />
-    <Text>{label}</Text>
-    {notification && (
-      <View style={styles.notification}>
-        <Text style={styles.notificationText}>{notification}</Text>
-      </View>
-    )}
-  </TouchableOpacity>
-);
+const ActionButton = ({ icon, label, onPress, notification, isDisabled }) => {
+  return (
+    <TouchableOpacity
+      style={[styles.actionButton, isDisabled && styles.disabledButton]}
+      onPress={!isDisabled ? onPress : null} // Disable press event if disabled
+      disabled={isDisabled}
+    >
+      <FontAwesome5
+        name={icon}
+        size={24}
+        color={isDisabled ? "gray" : "black"} // Gray out when disabled
+        style={isDisabled ? { opacity: 0.5 } : {}}
+      />
+      <Text style={isDisabled ? { color: "gray" } : {}}>{label}</Text>
+
+      {/* Show notification only if it exists and is not zero */}
+      {notification > 0 && (
+        <View style={styles.notification}>
+          <Text style={styles.notificationText}>{notification}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "white" },
-  scrollContainer: { alignItems: "center", padding: 16 },
+  portraitContainer: { alignItems: "center", padding: 16 },
+  landscapeContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    padding: 16,
+    height: "100%",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     width: "100%",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+    // paddingVertical: 8,
   },
   settingsMenu: {
     backgroundColor: "#f8f8f8",
@@ -241,7 +378,7 @@ const styles = StyleSheet.create({
     marginVertical: 5,
     borderRadius: 5,
   },
-  settingItem: {
+  audioSetting: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -252,7 +389,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     width: "100%",
-    paddingVertical: 8,
   },
   picker: { height: 30, width: 100, marginVertical: 10 },
   sudokuGrid: {
@@ -262,6 +398,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     borderWidth: 2,
     borderColor: "black",
+  },
+  horizontalLine: { borderBottomWidth: 2, borderBottomColor: "black" },
+  verticalLine: { borderRightWidth: 2, borderRightColor: "black" },
+  sideControls: {
+    width: "40%",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "25px",
   },
   cell: {
     width: "11.11%",
@@ -275,11 +419,17 @@ const styles = StyleSheet.create({
   cellText: { fontSize: 18 },
   actions: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent: "space-between",
     width: "100%",
     paddingVertical: 16,
   },
-  actionButton: { alignItems: "center" },
+  actionButton: {
+    alignItems: "center",
+    backgroundColor: "antiquewhite",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+  },
   notification: {
     position: "absolute",
     top: -4,
@@ -296,9 +446,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     width: "100%",
-    paddingVertical: 16,
   },
-  number: { fontSize: 24, color: "blue", fontWeight: "bold" },
+  wrap: {
+    flexWrap: "wrap",
+  },
+  number: { fontSize: 24, color: "blue", fontWeight: 500 },
+  numberGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    rowGap: "10px",
+    columnGap: "80px",
+    textAlign: "center",
+  },
 });
 
 export default SudokuGame;
