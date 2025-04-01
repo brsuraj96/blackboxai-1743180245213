@@ -11,3 +11,4 @@ declare module './WaterFlowScreen';
 declare module './TriviaScreen';
 declare module './RiddlesScreen';
 declare module './HomeScreen';
+declare module './SlideTileScreen';

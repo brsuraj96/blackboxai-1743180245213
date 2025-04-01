@@ -16,7 +16,8 @@ const games = [
   { id: "6", name: "Flow Free" },
   { id: "7", name: "Water Flow Puzzle" },
   { id: "8", name: "Trivia" },
-  { id: "9", name: "Interactive Riddles" },
+  { id: "9", name: "Riddles" },
+  { id: "10", name: "Slide Tile" },
 ];
 
 const GamesScreen = ({ navigation }) => {

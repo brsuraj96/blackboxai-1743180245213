@@ -16,6 +16,7 @@ import FlowFreeScreen from "./screens/FlowFreeScreen";
 import WaterFlowScreen from "./screens/WaterFlowScreen";
 import TriviaScreen from "./screens/TriviaScreen";
 import RiddlesScreen from "./screens/RiddlesScreen";
+import SlideTileScreen from "./screens/SlideTileScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -25,15 +26,16 @@ const GamesStack = () => {
     <Stack.Navigator>
       <Stack.Screen name="Games" component={GamesScreen} />
       <Stack.Screen name="Sudoku" component={SudokuScreen} />
+      <Stack.Screen name="Slide Tile" component={SlideTileScreen} />
       <Stack.Screen name="Crossword" component={CrosswordScreen} />
-      <Stack.Screen name="Jigsaw" component={JigsawScreen} />
-      <Stack.Screen name="Matchstick" component={MatchstickScreen} />
+      <Stack.Screen name="Jigsaw Puzzle" component={JigsawScreen} />
+      <Stack.Screen name="Matchstick Puzzle" component={MatchstickScreen} />
       <Stack.Screen
         name="Spot the Difference"
         component={SpotDifferenceScreen}
       />
       <Stack.Screen name="Flow Free" component={FlowFreeScreen} />
-      <Stack.Screen name="Water Flow" component={WaterFlowScreen} />
+      <Stack.Screen name="Water Flow Puzzle" component={WaterFlowScreen} />
       <Stack.Screen name="Trivia" component={TriviaScreen} />
       <Stack.Screen name="Riddles" component={RiddlesScreen} />
     </Stack.Navigator>
